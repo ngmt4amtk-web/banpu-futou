@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0908">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="萬夫不當 — 三国志の武将で乱軍を薙ぎ払うホードサバイバル。">
+<title>萬夫不當</title>
+<style>
+:root{
+  --sumi:#0a0908; --sumi2:#131110; --sumi3:#1c1917;
+  --kin:#c9a227; --kin2:#f0d67a; --kin3:#6b5a1e;
+  --shu:#c0392b; --shu2:#e0563f;
+  --gin:#e8dcb0; --dim:#8a8272;
+  --mincho:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"MS PMincho",serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* flexの子は既定で min-width:auto のため、中身の実幅が親を押し広げて画面外へ出る。全域で殺す */
+.screen>*,.scroll>*,.mid>*,.card,.card>*,.row>*,
+.hc-top>*,.sc-head>*,.fc-head>*,.hc-stats>*,.lu-card>*{min-width:0}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--sumi);
+  font-family:var(--mincho);color:var(--gin);
+  -webkit-user-select:none;user-select:none;touch-action:none;overscroll-behavior:none}
+#cv{position:fixed;inset:0;display:block;background:var(--sumi);z-index:0}
+
+/* ---- 画面 ---- */
+.screen{position:fixed;inset:0;z-index:10;display:none;flex-direction:column;
+  background:radial-gradient(ellipse at 50% 30%,#16120f 0%,#0a0908 72%);
+  padding:calc(env(safe-area-inset-top) + 14px) 14px calc(env(safe-area-inset-bottom) + 14px);
+  overflow:hidden}
+.screen.on{display:flex}
+.scr-head{flex:0 0 auto;text-align:center;margin-bottom:10px}
+.scr-t{font-size:22px;letter-spacing:.5em;color:var(--kin2);text-indent:.5em}
+.scr-s{font-size:11px;color:var(--dim);letter-spacing:.28em;margin-top:5px}
+.scroll{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:2px 2px 8px;
+  scrollbar-width:thin;scrollbar-color:var(--kin3) transparent}
+.scroll::-webkit-scrollbar{width:5px}
+.scroll::-webkit-scrollbar-thumb{background:var(--kin3);border-radius:3px}
+.row{flex:0 0 auto;display:flex;gap:9px;margin-top:10px}
+
+/* ---- ボタン ---- */
+.btn{flex:1;padding:13px 10px;text-align:center;font-family:var(--mincho);font-size:16px;
+  color:var(--kin2);background:linear-gradient(180deg,#1e1a16,#141110);
+  border:1px solid var(--kin3);letter-spacing:.16em;cursor:pointer;
+  transition:.14s;position:relative}
+.btn:active{background:#2a231a;transform:translateY(1px)}
+.btn.pri{background:linear-gradient(180deg,#5a2018,#33130e);border-color:var(--shu);color:#f4e3c8}
+.btn.pri:active{background:#7a2c20}
+.btn.sub{flex:0 0 auto;padding:13px 20px;font-size:14px;color:var(--dim)}
+
+/* ---- カード ---- */
+.card{background:linear-gradient(180deg,rgba(30,26,22,.92),rgba(16,14,12,.92));
+  border:1px solid #2e2822;padding:12px 13px;margin-bottom:9px;cursor:pointer;
+  transition:.14s;position:relative;overflow:hidden}
+.card:active{transform:scale(.995)}
+.card.sel{border-color:var(--kin);box-shadow:0 0 0 1px rgba(201,162,39,.36) inset,0 0 18px rgba(201,162,39,.13)}
+.card.sel::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--kin)}
+.card.locked{opacity:.36;cursor:default}
+.dim{color:var(--dim)}
+.pad{padding:16px 4px;font-size:13px;line-height:1.9}
+
+/* ---- 武将 ---- */
+.hc-top{display:flex;align-items:baseline;justify-content:space-between}
+.hc-name{font-size:21px;color:var(--gin);letter-spacing:.1em}
+.hc-style{font-size:11px;letter-spacing:.1em}
+.hc-weapon{font-size:12px;color:var(--kin);margin-top:3px;letter-spacing:.08em}
+.hc-desc{font-size:12px;color:#b3aa98;margin-top:6px;line-height:1.65}
+.hc-trait{font-size:11px;color:var(--kin2);margin-top:6px;padding-left:9px;border-left:2px solid var(--kin3);line-height:1.6}
+.hc-stats{display:flex;gap:5px;margin-top:9px}
+.sbar{flex:1;font-size:9px;color:var(--dim);text-align:center}
+.sbar i{display:block;height:3px;background:linear-gradient(90deg,var(--kin3),var(--kin));margin-top:3px}
+.sbar span{opacity:.8}
+#hero-loadout{flex:0 0 auto;font-size:11px;color:#a89e8c;padding:9px 11px;margin-top:8px;
+  background:rgba(20,17,15,.85);border:1px solid #2a241e;line-height:1.7}
+.lo-t{color:var(--kin);letter-spacing:.14em}
+.lo-stats{color:var(--dim);margin-top:4px;font-size:10px}
+
+/* ---- 戦場 ---- */
+.sc-head{display:flex;align-items:baseline;gap:9px}
+.sc-name{font-size:20px;letter-spacing:.14em}
+.sc-clear{font-size:10px;color:var(--kin2);border:1px solid var(--kin3);padding:1px 6px}
+.sc-sub{font-size:11px;color:var(--dim);margin-top:3px;letter-spacing:.06em}
+.sc-note{font-size:12px;color:#a49a88;margin-top:7px;line-height:1.7}
+.sc-meta{font-size:11px;color:var(--kin);margin-top:7px;letter-spacing:.05em}
+.sc-lock{font-size:11px;color:var(--shu);margin-top:5px}
+
+/* ---- 錬兵所 ---- */
+.fc-head{display:flex;justify-content:space-between;align-items:baseline}
+.fc-name{font-size:18px;letter-spacing:.16em}
+.fc-lv{font-size:12px;color:var(--kin)}
+.fc-desc{font-size:12px;color:#a49a88;margin-top:4px}
+.fc-cost{font-size:13px;color:var(--kin2);margin-top:6px;text-align:right}
+.forge-card.maxed{opacity:.5}
+.forge-card.poor .fc-cost{color:#7a4a44}
+.gold-line{flex:0 0 auto;text-align:center;font-size:14px;color:var(--kin2);margin-bottom:8px;letter-spacing:.1em}
+
+/* ---- 保管庫 ---- */
+#vault-tabs{flex:0 0 auto;display:flex;gap:5px;margin-bottom:9px;flex-wrap:wrap}
+.vtab{flex:1;min-width:52px;text-align:center;font-size:12px;padding:7px 3px;color:var(--dim);
+  border:1px solid #2a241e;background:#141110;cursor:pointer;letter-spacing:.08em}
+.vtab.on{color:var(--kin2);border-color:var(--kin3);background:#1e1a14}
+.vtab i{display:block;font-style:normal;font-size:9px;opacity:.65;margin-top:1px}
+.ic-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ic-head>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ic-name{font-size:16px;letter-spacing:.08em}
+.ic-rar{font-size:10px;opacity:.85}
+.ic-quote{font-size:10.5px;color:#8a8272;margin-top:4px;font-style:italic;line-height:1.6}
+.ic-stats{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:7px}
+.ic-stats span{font-size:11px;color:#b3aa98}
+.ic-uniq{font-size:11px;color:var(--kin2);margin-top:6px;padding-left:8px;border-left:2px solid var(--kin3)}
+.ic-on{position:absolute;top:0;right:0;font-size:9px;color:#0a0908;background:var(--kin);padding:2px 7px;letter-spacing:.1em}
+.item-card.on{border-color:var(--kin)}
+
+/* ---- 昇級 ---- */
+#scr-levelup{background:rgba(6,5,4,.9);justify-content:center;backdrop-filter:blur(2px)}
+#lu-lv{text-align:center;font-size:15px;color:var(--kin2);letter-spacing:.3em;margin-bottom:4px}
+.lu-t{text-align:center;font-size:11px;color:var(--dim);letter-spacing:.3em;margin-bottom:16px}
+#lu-list{max-width:620px;width:100%;margin:0 auto}
+.lu-card{display:flex;align-items:center;gap:13px;padding:14px 15px;border-color:#3a3229}
+.lu-card:active{border-color:var(--kin)}
+.lu-card.sub{border-left:3px solid var(--shu)}
+.lu-icon{flex:0 0 auto;width:44px;height:44px;line-height:44px;text-align:center;font-size:24px;
+  color:var(--kin2);border:1px solid var(--kin3);background:#181410}
+.lu-name{font-size:18px;letter-spacing:.1em}
+.lu-name i{font-style:normal;font-size:11px;color:var(--kin);margin-left:5px}
+.lu-name i.new{color:var(--shu2)}
+.lu-desc{font-size:12px;color:#a49a88;margin-top:3px;line-height:1.6}
+.lu-body{flex:1;min-width:0}
+.lu-card>*{min-width:0}
+
+/* ---- 一時停止 / 結果 ---- */
+#scr-pause,#scr-result{background:rgba(6,5,4,.93);justify-content:center}
+.mid{max-width:560px;width:100%;margin:0 auto}
+.p-line{font-size:14px;text-align:center;margin-bottom:6px;letter-spacing:.08em}
+.p-subs{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-top:9px}
+.p-sub{font-size:11px;padding:3px 8px;border:1px solid #3a3229;color:#b3aa98}
+.r-title{text-align:center;font-size:34px;letter-spacing:.42em;text-indent:.42em;margin-bottom:14px}
+.r-title.win{color:var(--kin2);text-shadow:0 0 26px rgba(201,162,39,.42)}
+.r-title.lose{color:var(--shu);text-shadow:0 0 26px rgba(192,57,43,.32)}
+.r-stage{text-align:center;font-size:13px;color:var(--dim);margin-bottom:13px;letter-spacing:.14em}
+.r-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#241f1a;border:1px solid #241f1a}
+.rr{display:flex;justify-content:space-between;padding:9px 12px;background:#121010;font-size:12px}
+.rr span{color:var(--dim)}
+.rr b{color:var(--gin);font-weight:normal;font-size:14px}
+.r-loot{margin-top:12px;font-size:12px;line-height:1.9;text-align:center}
+.r-loot-t{color:var(--kin);font-size:11px;letter-spacing:.16em;margin-bottom:3px}
+#r-unlock{margin-top:12px;text-align:center;font-size:13px;color:var(--kin2);
+  border:1px solid var(--kin3);padding:9px;letter-spacing:.1em}
+
+/* ---- タイトル ---- */
+#scr-title{justify-content:center;text-align:center}
+.title-main{font-size:min(16.5vw,78px);letter-spacing:.1em;text-indent:.1em;
+  background:linear-gradient(180deg,#f6e9bf 0%,#c9a227 55%,#8a6d18 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 3px 14px rgba(201,162,39,.24));line-height:1.1}
+.title-sub{font-size:12px;color:var(--dim);letter-spacing:.52em;text-indent:.52em;margin-top:10px}
+.title-rule{width:74px;height:1px;background:linear-gradient(90deg,transparent,var(--kin3),transparent);margin:20px auto}
+.title-stats{font-size:11px;color:var(--dim);letter-spacing:.14em;line-height:2;margin-bottom:22px}
+.title-stats b{color:var(--kin2);font-weight:normal}
+#scr-title .row{max-width:420px;width:100%;margin:9px auto 0}
+
+/* ---- HUD ---- */
+#hud-top{position:fixed;top:calc(env(safe-area-inset-top) + 8px);right:12px;z-index:5;display:none;gap:8px}
+#btn-pause{width:34px;height:34px;line-height:32px;text-align:center;font-size:15px;
+  color:var(--kin2);border:1px solid var(--kin3);background:rgba(14,12,10,.72);cursor:pointer}
+#btn-pause:active{background:#2a231a}
+
+@media (max-width:420px){
+  .hc-name{font-size:19px} .sc-name{font-size:18px}
+  .lu-icon{width:38px;height:38px;line-height:38px;font-size:20px}
+  .lu-name{font-size:16px} .r-title{font-size:28px}
+}
+@media (min-width:760px){
+  #hero-list,#stage-list,#vault-list,#forge-list{
+    display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+  #scr-hero .scroll,#scr-stage .scroll{max-width:900px;width:100%;margin:0 auto}
+  #scr-forge .scroll,#scr-vault .scroll{max-width:900px;width:100%;margin:0 auto}
+  .row{max-width:900px;width:100%;margin-left:auto;margin-right:auto}
+}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<div id="hud-top"><div id="btn-pause">॥</div></div>
+
+<!-- タイトル -->
+<div id="scr-title" class="screen">
+  <div style="margin:auto 0">
+    <div class="title-main">萬夫不當</div>
+    <div class="title-sub">ばんぷ ふとう</div>
+    <div class="title-rule"></div>
+    <div class="title-stats">
+      戦功 <b id="t-gold">0</b> ／ 通算 <b id="t-kills">0</b> 討 ／ 出陣 <b id="t-runs">0</b> 度<br>
+      神品 <b id="t-legends">0</b>
+    </div>
+    <div class="row"><div class="btn pri" id="t-start">出 陣</div></div>
+    <div class="row">
+      <div class="btn" id="t-forge">錬 兵 所</div>
+      <div class="btn" id="t-vault">保 管 庫</div>
+    </div>
+  </div>
+</div>
+
+<!-- 武将 -->
+<div id="scr-hero" class="screen">
+  <div class="scr-head"><div class="scr-t">武 将</div><div class="scr-s">誰で乱軍に入る</div></div>
+  <div class="scroll"><div id="hero-list"></div></div>
+  <div id="hero-loadout"></div>
+  <div class="row">
+    <div class="btn sub" id="hero-back">戻</div>
+    <div class="btn pri" id="hero-go">出陣</div>
+  </div>
+</div>
+
+<!-- 戦場 -->
+<div id="scr-stage" class="screen">
+  <div class="scr-head"><div class="scr-t">戦 場</div><div class="scr-s">どこで斬る</div></div>
+  <div class="scroll"><div id="stage-list"></div></div>
+  <div class="row">
+    <div class="btn sub" id="stage-back">戻</div>
+    <div class="btn pri" id="stage-go">進む</div>
+  </div>
+</div>
+
+<!-- 錬兵所 -->
+<div id="scr-forge" class="screen">
+  <div class="scr-head"><div class="scr-t">錬 兵 所</div><div class="scr-s">戦功で己を鍛える</div></div>
+  <div class="gold-line">戦功 <span id="forge-gold">0</span></div>
+  <div class="scroll"><div id="forge-list"></div></div>
+  <div class="row"><div class="btn" id="forge-back">戻る</div></div>
+</div>
+
+<!-- 保管庫 -->
+<div id="scr-vault" class="screen">
+  <div class="scr-head"><div class="scr-t">保 管 庫</div><div class="scr-s">戦場で拾った物</div></div>
+  <div class="gold-line">戦功 <span id="vault-gold">0</span></div>
+  <div id="vault-tabs"></div>
+  <div class="scroll"><div id="vault-list"></div></div>
+  <div class="row"><div class="btn" id="vault-back">戻る</div></div>
+</div>
+
+<!-- 昇級 -->
+<div id="scr-levelup" class="screen">
+  <div class="mid">
+    <div id="lu-lv">第 1 級</div>
+    <div class="lu-t">一 つ 選 べ</div>
+    <div id="lu-list"></div>
+  </div>
+</div>
+
+<!-- 一時停止 -->
+<div id="scr-pause" class="screen">
+  <div class="mid">
+    <div class="scr-t" style="margin-bottom:16px">休 息</div>
+    <div id="pause-body"></div>
+    <div class="row" style="margin-top:18px"><div class="btn pri" id="p-resume">戦いに戻る</div></div>
+    <div class="row">
+      <div class="btn" id="p-mute">音を消す</div>
+      <div class="btn" id="p-quit">退 却</div>
+    </div>
+  </div>
+</div>
+
+<!-- 結果 -->
+<div id="scr-result" class="screen">
+  <div class="mid">
+    <div id="r-title" class="r-title">制 圧</div>
+    <div id="r-body"></div>
+    <div id="r-unlock" style="display:none"></div>
+    <div class="row" style="margin-top:16px"><div class="btn pri" id="r-again">もう一度</div></div>
+    <div class="row">
+      <div class="btn" id="r-vault">保管庫</div>
+      <div class="btn" id="r-home">本陣へ</div>
+    </div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="gfx.js"></script>
+<script src="game.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
