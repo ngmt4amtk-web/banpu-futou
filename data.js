@@ -130,7 +130,7 @@ const ENEMIES = {
 const STAGES = [
   {
     id: 'guangzong', name: '広宗', sub: '黄巾の乱 · 中平元年',
-    dur: 480, ground: '#1c1713', accent: '#6b5a2a',
+    dur: 480, ground: '#927640', accent: '#67490e',
     boss: { key: 'zhangjiao', name: '張角', title: '大賢良師', hp: 15000, spd: 40, atk: 26, r: 44, fac: 'kou',
             pattern: 'summon', xp: 400, gold: 200 },
     waves: [
@@ -151,7 +151,7 @@ const STAGES = [
   },
   {
     id: 'hulao', name: '虎牢関', sub: '反董卓連合 · 初平元年',
-    dur: 540, ground: '#191519', accent: '#7a3a3a',
+    dur: 540, ground: '#ae6846', accent: '#922a17',
     boss: { key: 'lubu', name: '呂布', title: '人中の呂布', hp: 26000, spd: 96, atk: 44, r: 40, fac: 'gun',
             pattern: 'rush', xp: 700, gold: 340 },
     waves: [
@@ -171,7 +171,7 @@ const STAGES = [
   },
   {
     id: 'changban', name: '長坂坡', sub: '荊州潰走 · 建安十三年',
-    dur: 540, ground: '#161a17', accent: '#3a6b4a',
+    dur: 540, ground: '#847b4c', accent: '#485420',
     boss: { key: 'caochun', name: '曹純', title: '虎豹騎督', hp: 32000, spd: 104, atk: 40, r: 38, fac: 'wei',
             pattern: 'charge', xp: 800, gold: 380 },
     waves: [
@@ -191,7 +191,7 @@ const STAGES = [
   },
   {
     id: 'chibi', name: '赤壁', sub: '烏林の火 · 建安十三年冬',
-    dur: 600, ground: '#1d1512', accent: '#a5482a',
+    dur: 600, ground: '#ad6a37', accent: '#8c320b',
     boss: { key: 'caiMao', name: '蔡瑁', title: '荊州水軍都督', hp: 42000, spd: 62, atk: 46, r: 42, fac: 'wei',
             pattern: 'ring', xp: 950, gold: 460 },
     waves: [
@@ -211,7 +211,7 @@ const STAGES = [
   },
   {
     id: 'wuzhangyuan', name: '五丈原', sub: '北伐終焉 · 建興十二年',
-    dur: 660, ground: '#141518', accent: '#5a5a7a',
+    dur: 660, ground: '#8b785e', accent: '#3b5169',
     boss: { key: 'simayi', name: '司馬懿', title: '大将軍', hp: 62000, spd: 74, atk: 54, r: 44, fac: 'wei',
             pattern: 'all', xp: 1400, gold: 700 },
     waves: [

@@ -139,7 +139,7 @@ function startRun(heroId, stageId) {
     lv: 1, xp: 0, xpNeed: 14, gold: 0, kills: 0,
     t: 0, atkTimer: 0, invuln: 0, dead: false, won: false,
     combo: 0, comboT: 0, cryIdx: 0,
-    enemies: [], projs: [], eprojs: [], pickups: [], fx: [], parts: [], nums: [], orbits: [],
+    enemies: [], projs: [], eprojs: [], pickups: [], fx: [], parts: [], nums: [], orbits: [], shards: [],
     waveIdx: 0, spawnAcc: {}, eliteIdx: 0, boss: null, bossWarn: 0,
     lootFound: [], revives: st.revive,
     grid: new Map(),
@@ -265,7 +265,8 @@ function killEnemy(e) {
   G.hitStop = Math.max(G.hitStop, e.boss ? 0.22 : e.elite ? 0.07 : 0.018);
   G.cam.shake = Math.min(16, G.cam.shake + (e.boss ? 14 : e.elite ? 5 : 1.1));
   Snd.kill();
-  splash(e.x, e.y, e.boss ? 60 : e.elite ? 22 : 8, '#c0392b');
+  splash(e.x, e.y, e.boss ? 60 : e.elite ? 26 : 10, '#c0392b');
+  if (!e.boss) spawnShards(e);
   if (e.boss) splash(e.x, e.y, 40, '#f0d67a');
 
   const def = e.def;
@@ -289,6 +290,23 @@ function killEnemy(e) {
   }
 
   if (e.boss) { R.won = true; R.wonT = 1.1; }
+}
+
+/* 皮影の人形は首・腕・胴・脚が別板で、糸と鋲で繋がっている。だから壊れ方が正しい */
+function spawnShards(e) {
+  if (R.shards.length > 80) return;
+  const sh = (typeof ENEMY_SHAPE !== 'undefined') ? ENEMY_SHAPE[e.key] : null;
+  const sc = e.def.body === 'horse' ? 1.05 : (sh ? sh.s : 1.2);
+  const fac = e.def.fac || 'gun';
+  const n = e.elite ? 4 : (Math.random() < 0.75 ? 4 : 2);
+  for (let i = 0; i < n; i++) {
+    const a = rnd(TAU);
+    R.shards.push({
+      x: e.x, y: e.y - 6 - i * 5, kind: SHARD_KINDS[i % 4], fac, s: sc,
+      vx: Math.cos(a) * rnd(70, 250), vy: Math.sin(a) * rnd(40, 140) - rnd(90, 240),
+      rot: rnd(TAU), rotV: rnd(-10, 10), t: 0, life: rnd(0.75, 1.35), gr: rnd(540, 790),
+    });
+  }
 }
 
 function dropPickup(x, y, kind, v) {
@@ -691,6 +709,13 @@ function update(dt) {
     }
     if (f.t > f.dur) R.fx.splice(i, 1);
   }
+  for (let i = R.shards.length - 1; i >= 0; i--) {
+    const sd = R.shards[i]; sd.t += dt;
+    if (sd.t > sd.life) { R.shards.splice(i, 1); continue; }
+    sd.x += sd.vx * dt; sd.y += sd.vy * dt * 0.7;
+    sd.vy += sd.gr * dt; sd.vx *= 0.994;
+    sd.rot += sd.rotV * dt;
+  }
   for (let i = R.parts.length - 1; i >= 0; i--) {
     const p = R.parts[i]; p.t += dt;
     if (p.t > p.life) { R.parts.splice(i, 1); continue; }
@@ -904,7 +929,7 @@ function render() {
   const ox = VW / 2 - camx, oy = VH / 2 - camy * ISO;
 
   /* 地面 */
-  const tile = groundTile(R.stage.ground, R.stage.accent);
+  const tile = clothTile(R.stage.ground, R.stage.accent);
   const tw = tile.w, th = tile.h * ISO;
   const startX = Math.floor((camx - VW / 2) / tw) * tw;
   const startY = Math.floor((camy * ISO - VH / 2) / th) * th;
@@ -980,6 +1005,20 @@ function render() {
     }
   });
 
+  /* 落ちた人形の断片 */
+  R.shards.forEach(sd => {
+    const sx = sd.x + ox, sy = sd.y * ISO + oy;
+    if (sx < -60 || sx > VW + 60 || sy < -60 || sy > VH + 60) return;
+    const sp = shardSprite(sd.kind, sd.fac, sd.s);
+    const fade = 1 - Math.max(0, (sd.t - sd.life * 0.62) / (sd.life * 0.38));
+    ctx.save();
+    ctx.globalAlpha = clamp(fade, 0, 1);
+    ctx.translate(sx, sy); ctx.rotate(sd.rot);
+    ctx.drawImage(sp.c, -sp.ox, -sp.oy, sp.w, sp.h);
+    ctx.restore();
+  });
+  ctx.globalAlpha = 1;
+
   /* 斬撃エフェクト（キャラの下） */
   R.fx.forEach(f => {
     const k = f.t / f.dur;
@@ -1028,10 +1067,11 @@ function render() {
     const rr = (aura.def.sub.r * 0.8 + aura.lv * 12) * (1 + (R.stats.area - 1) * 0.5);
     const sx = R.x + ox, sy = R.y * ISO + oy;
     const g3 = ctx.createRadialGradient(sx, sy, rr * 0.3, sx, sy, rr);
-    g3.addColorStop(0, 'rgba(232,60,26,0)');
-    g3.addColorStop(0.72, 'rgba(232,74,26,' + (0.10 + 0.045 * Math.sin(R.t * 6)) + ')');
-    g3.addColorStop(0.94, 'rgba(255,170,60,' + (0.16 + 0.06 * Math.sin(R.t * 6)) + ')');
-    g3.addColorStop(1, 'rgba(255,170,60,0)');
+    /* 灯った布の上では、火は「暗い赤」でなく「布より熱い明るさ」でしか火に見えない */
+    g3.addColorStop(0, 'rgba(255,190,90,0)');
+    g3.addColorStop(0.72, 'rgba(255,168,72,' + (0.13 + 0.05 * Math.sin(R.t * 6)) + ')');
+    g3.addColorStop(0.94, 'rgba(255,232,150,' + (0.30 + 0.08 * Math.sin(R.t * 6)) + ')');
+    g3.addColorStop(1, 'rgba(255,232,150,0)');
     ctx.fillStyle = g3;
     ctx.save(); ctx.translate(sx, sy); ctx.scale(1, ISO); ctx.translate(-sx, -sy);
     ctx.beginPath(); ctx.arc(sx, sy, rr, 0, TAU); ctx.fill();
@@ -1108,6 +1148,21 @@ function render() {
     ctx.globalAlpha = 1;
   });
 
+  /* 布の後ろの一灯。芯が熱を持ち、離れるほど布が翳る。
+     画面の隅でも半径の0.71倍までしか届かないので、落ちはそこまでに収める——
+     これ以上沈めると影絵の人形と布の差が消え、敵が見えなくなる */
+  const lx = R.x + ox, ly = R.y * ISO + oy - 18;
+  const lr = Math.max(VW, VH) * 0.82;
+  const lamp = ctx.createRadialGradient(lx, ly, lr * 0.04, lx, ly, lr);
+  lamp.addColorStop(0, 'rgba(255,238,196,0.10)');
+  lamp.addColorStop(0.30, 'rgba(70,42,16,0.00)');
+  lamp.addColorStop(0.50, 'rgba(46,26,10,0.09)');
+  lamp.addColorStop(0.68, 'rgba(28,15,6,0.20)');
+  lamp.addColorStop(0.85, 'rgba(14,7,3,0.32)');
+  lamp.addColorStop(1, 'rgba(7,3,1,0.42)');
+  ctx.fillStyle = lamp;
+  ctx.fillRect(0, 0, VW, VH);
+
   ctx.restore();
   drawHUD(ctx, W, H);
 }
@@ -1115,7 +1170,7 @@ function render() {
 const FONT = '"Hiragino Mincho ProN","Yu Mincho",YuMincho,"MS PMincho",serif';
 
 function shadow(ctx, sx, sy, w) {
-  ctx.fillStyle = 'rgba(0,0,0,0.42)';
+  ctx.fillStyle = 'rgba(28,14,4,0.26)';
   ctx.beginPath(); ctx.ellipse(sx, sy, w, w * 0.34, 0, 0, TAU); ctx.fill();
 }
 
@@ -1131,7 +1186,7 @@ function drawPlayer(ctx, sx, sy) {
   ctx.translate(sx, sy);
   if (flip) ctx.scale(-1, 1);
   const bob = Math.sin(R.t * 9) * (step ? 1.2 : 0.4);
-  ctx.drawImage(sp.c, -sp.w / 2, -sp.h + 3 + bob, sp.w, sp.h);
+  ctx.drawImage(sp.c, -sp.ox, -sp.oy + bob, sp.w, sp.h);
   ctx.restore();
   ctx.globalAlpha = 1;
 }
@@ -1170,17 +1225,18 @@ function drawEnemy(ctx, sx, sy, e) {
   ctx.save();
   ctx.translate(sx, sy);
   if (e.x > R.x) ctx.scale(-1, 1);
-  ctx.drawImage(sp.c, -sp.w / 2, -sp.h + 3, sp.w, sp.h);
+  ctx.drawImage(sp.c, -sp.ox, -sp.oy, sp.w, sp.h);
   if (e.flash > 0) {
     ctx.globalAlpha = Math.min(0.9, e.flash * 7);
-    ctx.drawImage(flashSprite(sp).c, -sp.w / 2, -sp.h + 3, sp.w, sp.h);
+    ctx.drawImage(flashSprite(sp).c, -sp.ox, -sp.oy, sp.w, sp.h);
     ctx.globalAlpha = 1;
   }
   ctx.restore();
   if (e.elite && !e.boss) {
     const w = 34, hf = e.hp / e.hpMax;
-    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(sx - w / 2, sy - sp.h - 4, w, 3);
-    ctx.fillStyle = '#c0392b'; ctx.fillRect(sx - w / 2, sy - sp.h - 4, w * hf, 3);
+    const by = sy - sp.oy - 4;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(sx - w / 2, by, w, 3);
+    ctx.fillStyle = '#c0392b'; ctx.fillRect(sx - w / 2, by, w * hf, 3);
   }
 }
 

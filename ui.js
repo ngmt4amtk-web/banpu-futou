@@ -310,6 +310,7 @@ function boot() {
 
   /* ヘッドレス自己検証: ?selftest=秒数[&hero=..&stage=..][&all=1] */
   const q = new URLSearchParams(location.search);
+  if (q.get('rendertest')) { setTimeout(() => renderTest(q), 60); return; }
   if (q.get('probe')) { setTimeout(() => probeLayout(q.get('probe')), 60); return; }
   if (q.get('selftest')) runSelfTest(q);
   else if (q.get('demo')) runDemo(q);
@@ -324,7 +325,7 @@ function runDemo(q) {
   ['scr-title','scr-hero','scr-stage','scr-forge','scr-vault','scr-result','scr-pause','scr-levelup']
     .forEach(id => $(id).classList.remove('on'));
   $('hud-top').style.display = 'flex';
-  if (G.mode !== 'result') G.mode = 'run';
+  G.mode = 'run';
   G.input.active = true; G.input.ox = 86; G.input.oy = G.H - 120;
   G.input.dx = 0.62; G.input.dy = -0.38;
   G.demoFreeze = true;
@@ -333,6 +334,36 @@ function runDemo(q) {
   else if (ui === 'result') { endRun(false); }
   else if (ui === 'vault') { endRun(false); go('vault'); }
   else if (ui === 'hero') { endRun(false); go('hero'); }
+  else G.mode = 'run';
+}
+
+/* 描画の実測: rAF の中で握り潰される例外を掴む */
+function renderTest(q) {
+  const out = [];
+  const secs = parseFloat(q.get('rendertest')) || 20;
+  try {
+    G.headless = true;
+    selfTest(secs, q.get('hero') || 'guanyu', q.get('stage') || 'guangzong');
+    G.headless = false;
+    out.push('update ok mode=' + G.mode + ' t=' + Math.round(R.t) + ' enemies=' + R.enemies.length +
+             ' shards=' + R.shards.length + ' lv=' + R.lv);
+  } catch (e) { out.push('UPDATE THREW: ' + (e && e.stack ? e.stack : e)); }
+  try {
+    G.mode = 'run';
+    render();
+    out.push('render ok');
+  } catch (e) { out.push('RENDER THREW: ' + (e && e.stack ? e.stack : e)); }
+  try {
+    const px = G.ctx.getImageData(Math.floor(G.W / 2), Math.floor(G.H / 2), 1, 1).data;
+    out.push('center pixel rgba=' + px[0] + ',' + px[1] + ',' + px[2] + ',' + px[3]);
+    const d = G.ctx.getImageData(0, 0, G.canvas.width, G.canvas.height).data;
+    let lit = 0;
+    for (let i = 0; i < d.length; i += 4 * 97) if (d[i] > 24 || d[i + 1] > 24 || d[i + 2] > 24) lit++;
+    out.push('非黒サンプル ' + lit + ' / ' + Math.floor(d.length / (4 * 97)));
+  } catch (e) { out.push('SAMPLE THREW: ' + e); }
+  const pre = document.createElement('pre');
+  pre.id = 'selftest-result'; pre.textContent = out.join('\n');
+  document.body.appendChild(pre);
 }
 
 /* レイアウトの実測（はみ出しの犯人を名指しするため） */
