@@ -918,6 +918,26 @@ function checkUnlocks() {
 }
 
 /* ============ 描画 ============ */
+/* 置いた光の位置。無限に続く戦場でも同じ場所に同じ火盆が立つように、格子をハッシュで散らす */
+function brazierField(camx, camy, VW, VH) {
+  /* 縦は画面座標でなく世界座標で数える。ISOで潰れているぶん世界は縦に広い */
+  const CELL = 250, out = [], WH = VH / ISO;
+  const x0 = Math.floor((camx - VW * 0.8) / CELL), x1 = Math.floor((camx + VW * 0.8) / CELL);
+  const y0 = Math.floor((camy - WH * 0.75) / CELL), y1 = Math.floor((camy + WH * 0.75) / CELL);
+  for (let gx = x0; gx <= x1; gx++) for (let gy = y0; gy <= y1; gy++) {
+    let h = (gx * 374761393 + gy * 668265263) | 0;
+    h = ((h ^ (h >> 13)) * 1274126177) | 0;
+    h = (h ^ (h >> 16)) >>> 0;
+    if (h % 5 < 2) continue;
+    out.push({
+      x: gx * CELL + (h % 997) / 997 * CELL * 0.8,
+      y: gy * CELL + ((h >>> 9) % 991) / 991 * CELL * 0.8,
+      seed: (h % 628) / 100,
+    });
+  }
+  return out;
+}
+
 function render() {
   const ctx = G.ctx, W = G.W, H = G.H;
   const VW = W / ZOOM, VH = H / ZOOM;
@@ -939,6 +959,13 @@ function render() {
       ctx.drawImage(tile.c, 0, 0, tile.c.width, tile.c.height, x - camx + VW / 2, y - camy * ISO + VH / 2, tw, th);
   ctx.restore();
 
+  /* 置いた光の器。炎と光は最後の灯りの層で足す */
+  R.braziers = brazierField(camx, camy, VW, VH);
+  const bsp = brazierSprite();
+  R.braziers.forEach(b => {
+    ctx.drawImage(bsp.c, b.x + ox - bsp.ox, b.y * ISO + oy - bsp.oy, bsp.w, bsp.h);
+  });
+
   /* 罠・設置物 */
   R.projs.forEach(p => {
     if (p.kind !== 'trap') return;
@@ -959,12 +986,23 @@ function render() {
     if (f.kind !== 'mortar') return;
     const sx = f.x + ox, sy = f.y * ISO + oy;
     const k = Math.min(1, f.t / (f.dur * 0.72));
-    ctx.strokeStyle = 'rgba(224,86,42,' + (0.35 + k * 0.5) + ')';
-    ctx.lineWidth = 2;
+    /* 予告は線だけ。夜の上でベタ塗りすると巨大な茶色の円盤になる */
+    ctx.strokeStyle = 'rgba(232,104,52,' + (0.30 + k * 0.45) + ')';
+    ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.ellipse(sx, sy, f.r * (1 - k * 0.15), f.r * 0.55 * (1 - k * 0.15), 0, 0, TAU); ctx.stroke();
     if (f.done) {
-      ctx.fillStyle = 'rgba(240,180,90,' + Math.max(0, 1 - (f.t - f.dur * 0.72) / (f.dur * 0.28)) * 0.5 + ')';
-      ctx.beginPath(); ctx.ellipse(sx, sy, f.r, f.r * 0.55, 0, 0, TAU); ctx.fill();
+      const a = Math.max(0, 1 - (f.t - f.dur * 0.72) / (f.dur * 0.28));
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.translate(sx, sy); ctx.scale(1, 0.55);
+      const bg = ctx.createRadialGradient(0, 0, f.r * 0.06, 0, 0, f.r);
+      bg.addColorStop(0,    'rgba(255,226,164,' + (a * 0.85).toFixed(3) + ')');
+      bg.addColorStop(0.35, 'rgba(255,150,58,'  + (a * 0.42).toFixed(3) + ')');
+      bg.addColorStop(0.75, 'rgba(210,72,26,'   + (a * 0.14).toFixed(3) + ')');
+      bg.addColorStop(1,    'rgba(180,50,16,0)');
+      ctx.fillStyle = bg;
+      ctx.beginPath(); ctx.arc(0, 0, f.r, 0, TAU); ctx.fill();
+      ctx.restore();
     }
   });
 
@@ -1067,13 +1105,18 @@ function render() {
     const rr = (aura.def.sub.r * 0.8 + aura.lv * 12) * (1 + (R.stats.area - 1) * 0.5);
     const sx = R.x + ox, sy = R.y * ISO + oy;
     const g3 = ctx.createRadialGradient(sx, sy, rr * 0.3, sx, sy, rr);
-    /* 灯った布の上では、火は「暗い赤」でなく「布より熱い明るさ」でしか火に見えない */
-    g3.addColorStop(0, 'rgba(255,190,90,0)');
-    g3.addColorStop(0.72, 'rgba(255,168,72,' + (0.13 + 0.05 * Math.sin(R.t * 6)) + ')');
-    g3.addColorStop(0.94, 'rgba(255,232,150,' + (0.30 + 0.08 * Math.sin(R.t * 6)) + ')');
-    g3.addColorStop(1, 'rgba(255,232,150,0)');
+    /* 火は加算でしか火にならない。上塗りにすると夜の上では白い円盤になる。
+       内側は空けて縁だけを灼く——燃えているのは輪であって面ではない */
+    const pu = 0.06 * Math.sin(R.t * 6);
+    g3.addColorStop(0,    'rgba(255,190,90,0)');
+    g3.addColorStop(0.58, 'rgba(255,140,50,' + (0.05 + pu * 0.4).toFixed(3) + ')');
+    g3.addColorStop(0.84, 'rgba(255,168,72,' + (0.20 + pu).toFixed(3) + ')');
+    g3.addColorStop(0.96, 'rgba(255,236,164,' + (0.42 + pu).toFixed(3) + ')');
+    g3.addColorStop(1,    'rgba(255,236,164,0)');
     ctx.fillStyle = g3;
-    ctx.save(); ctx.translate(sx, sy); ctx.scale(1, ISO); ctx.translate(-sx, -sy);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.translate(sx, sy); ctx.scale(1, ISO); ctx.translate(-sx, -sy);
     ctx.beginPath(); ctx.arc(sx, sy, rr, 0, TAU); ctx.fill();
     ctx.restore();
   }
@@ -1148,19 +1191,48 @@ function render() {
     ctx.globalAlpha = 1;
   });
 
-  /* 布の後ろの一灯。芯が熱を持ち、離れるほど布が翳る。
-     画面の隅でも半径の0.71倍までしか届かないので、落ちはそこまでに収める——
-     これ以上沈めると影絵の人形と布の差が消え、敵が見えなくなる */
-  const lx = R.x + ox, ly = R.y * ISO + oy - 18;
-  const lr = Math.max(VW, VH) * 0.82;
-  const lamp = ctx.createRadialGradient(lx, ly, lr * 0.04, lx, ly, lr);
-  lamp.addColorStop(0, 'rgba(255,238,196,0.10)');
-  lamp.addColorStop(0.30, 'rgba(70,42,16,0.00)');
-  lamp.addColorStop(0.50, 'rgba(46,26,10,0.09)');
-  lamp.addColorStop(0.68, 'rgba(28,15,6,0.20)');
-  lamp.addColorStop(0.85, 'rgba(14,7,3,0.32)');
-  lamp.addColorStop(1, 'rgba(7,3,1,0.42)');
-  ctx.fillStyle = lamp;
+  /* 灯りは一つ、置いた光がいくつか。
+     前は画面全体を覆う巨大なグラデーション一枚で、布が均一に翳るだけだった——
+     だから暖色が「染み」に見えた。光を溜まりに変えると、暗い寒色の中の暖色が成立する。
+     溜まりの外は塗らない。そこの敵は逆光の縁だけで見える。 */
+  const lx = R.x + ox, ly = R.y * ISO + oy - 16;
+  const lr = Math.max(VW, VH) * 1.25;
+
+  ctx.globalCompositeOperation = 'lighter';
+  const pool = (px, py, pr, a, warm) => {
+    const gr = ctx.createRadialGradient(px, py, pr * 0.05, px, py, pr);
+    gr.addColorStop(0,    'rgba(' + warm + ',' + (a).toFixed(3) + ')');
+    gr.addColorStop(0.22, 'rgba(' + warm + ',' + (a * 0.68).toFixed(3) + ')');
+    gr.addColorStop(0.46, 'rgba(' + warm + ',' + (a * 0.36).toFixed(3) + ')');
+    gr.addColorStop(0.72, 'rgba(' + warm + ',' + (a * 0.13).toFixed(3) + ')');
+    gr.addColorStop(0.89, 'rgba(' + warm + ',' + (a * 0.03).toFixed(3) + ')');
+    gr.addColorStop(1,    'rgba(' + warm + ',0)');
+    ctx.fillStyle = gr;
+    ctx.fillRect(px - pr, py - pr, pr * 2, pr * 2);
+  };
+  pool(lx, ly, lr, 0.13, '255,138,48');
+  R.braziers.forEach(b => {
+    const bx = b.x + ox, by = b.y * ISO + oy;
+    const fl = 0.84 + 0.16 * Math.sin(R.t * 5.5 + b.seed);
+    pool(bx, by - 15, 128 * fl, 0.30, '255,132,40');
+    pool(bx, by - 17, 44 * fl, 0.34, '255,222,150');
+    ctx.fillStyle = 'rgba(255,206,120,' + (0.55 * fl).toFixed(3) + ')';   /* 炎そのもの */
+    ctx.beginPath();
+    ctx.moveTo(bx - 4.6 * fl, by - 19);
+    ctx.quadraticCurveTo(bx - 2 * fl, by - 27 * fl, bx + 0.6, by - 31 * fl);
+    ctx.quadraticCurveTo(bx + 3.4 * fl, by - 26 * fl, bx + 4.8 * fl, by - 19);
+    ctx.closePath(); ctx.fill();
+  });
+  ctx.globalCompositeOperation = 'source-over';
+
+  /* 遠景は沈める。余白は暗さで作る */
+  const vr = Math.max(VW, VH) * 0.95;
+  const vig = ctx.createRadialGradient(lx, ly, vr * 0.16, lx, ly, vr);
+  vig.addColorStop(0,    'rgba(3,4,8,0)');
+  vig.addColorStop(0.34, 'rgba(3,4,8,0.14)');
+  vig.addColorStop(0.62, 'rgba(3,4,8,0.38)');
+  vig.addColorStop(1,    'rgba(2,3,6,0.72)');
+  ctx.fillStyle = vig;
   ctx.fillRect(0, 0, VW, VH);
 
   ctx.restore();
@@ -1234,7 +1306,8 @@ function drawEnemy(ctx, sx, sy, e) {
   ctx.restore();
   if (e.elite && !e.boss) {
     const w = 34, hf = e.hp / e.hpMax;
-    const by = sy - sp.oy - 4;
+    /* スプライトの余白でなく、実際の絵の天辺に合わせる */
+    const by = sy + (sp.top !== undefined ? sp.top : -sp.oy) - 6;
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(sx - w / 2, by, w, 3);
     ctx.fillStyle = '#c0392b'; ctx.fillRect(sx - w / 2, by, w * hf, 3);
   }

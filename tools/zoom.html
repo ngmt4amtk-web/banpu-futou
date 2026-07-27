@@ -1,0 +1,21 @@
+<meta charset="utf-8">
+<body style="margin:0;background:#6b5636">
+<canvas id="c" width="1560" height="700"></canvas>
+<script src="data.js"></script>
+<script src="cur_gfx.js"></script>
+<script>
+const g = document.getElementById('c').getContext('2d');
+g.fillStyle = '#6b5636'; g.fillRect(0,0,1560,700);
+g.imageSmoothingEnabled = false;
+const S = 7;
+const ids = ['guanyu','lubu','zhugeliang','xuchu'];
+ids.forEach((id,i) => {
+  const h = HEROES.find(x=>x.id===id);
+  const x = 200 + i*380, y = 640;
+  const sp = heroSprite(h, 0);
+  g.drawImage(sp.c, x - sp.ox*S, y - sp.oy*S, sp.w*S, sp.h*S);
+  g.fillStyle='#241a0c'; g.font='20px "Hiragino Mincho ProN",serif';
+  g.textAlign='center'; g.fillText(h.name, x, y+40); g.textAlign='left';
+});
+document.title='DONE';
+</script>

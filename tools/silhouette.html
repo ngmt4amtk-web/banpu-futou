@@ -1,0 +1,78 @@
+<meta charset="utf-8">
+<body style="margin:0;background:#cfc3ad">
+<canvas id="c" width="1400" height="560"></canvas>
+<pre id="out" style="font:12px monospace;padding:8px 14px;color:#2a2318"></pre>
+<script src="data.js"></script>
+<script src="cur_gfx.js"></script>
+<script>
+/* 合格条件の本丸：色を全部殺しても誰が誰か分かるか。
+   スプライトのアルファだけ取り出して単色に潰す＝彩色を識別に使わせない。 */
+const cv = document.getElementById('c'), g = cv.getContext('2d');
+g.fillStyle = '#cfc3ad'; g.fillRect(0,0,1400,560);
+g.imageSmoothingEnabled = false;
+
+function mask(sp) {
+  const t = document.createElement('canvas');
+  t.width = sp.c.width; t.height = sp.c.height;
+  const tg = t.getContext('2d');
+  tg.drawImage(sp.c, 0, 0);
+  const im = tg.getImageData(0,0,t.width,t.height), d = im.data;
+  for (let i=0;i<d.length;i+=4) {
+    if (d[i+3] > 110) { d[i]=10; d[i+1]=8; d[i+2]=6; d[i+3]=255; } else { d[i+3]=0; }
+  }
+  tg.putImageData(im,0,0);
+  return { cv: t, data: im.data, w: t.width, h: t.height };
+}
+function put(m, sp, x, y, sc) {
+  g.drawImage(m.cv, x - sp.ox*sc, y - sp.oy*sc, sp.w*sc, sp.h*sc);
+}
+function label(t, x, y) {
+  g.fillStyle = '#3a3020'; g.font = '13px "Hiragino Mincho ProN",serif';
+  g.textAlign = 'center'; g.fillText(t, x, y); g.textAlign = 'left';
+}
+
+const masks = [];
+g.fillStyle='#3a3020'; g.font='13px "Hiragino Mincho ProN",serif';
+g.fillText('武将 — 実寸1倍（実機と同じ大きさ）／色は全部殺してある', 14, 22);
+HEROES.forEach((h,i) => {
+  const sp = heroSprite(h, 0), m = mask(sp);
+  masks.push({ name: h.name, m });
+  const x = 100 + (i%5)*268, y = 160 + Math.floor(i/5)*0;
+  if (i < 5) { put(m, sp, x, y, 1); label(h.name, x, y+18); }
+});
+HEROES.slice(5).forEach((h,i) => {
+  const sp = heroSprite(h, 0);
+  const x = 100 + i*268, y = 300;
+  put(masks[i+5].m, sp, x, y, 1); label(h.name, x, y+18);
+});
+g.fillText('同じものを2倍で', 14, 350);
+HEROES.forEach((h,i) => {
+  const sp = heroSprite(h, 0);
+  const x = 130 + (i%5)*268, y = 500 + 0;
+  if (i>=5) return;
+  put(masks[i].m, sp, x, y, 2); label(h.name, x, y+20);
+});
+
+/* 機械判定：二値化した輪郭同士の非一致率。同じ人形の色違いなら限りなく0に近づく */
+function diff(a, b) {
+  const n = Math.min(a.data.length, b.data.length);
+  let uni = 0, xor = 0;
+  for (let i=3;i<n;i+=4) {
+    const p = a.data[i] > 0, q = b.data[i] > 0;
+    if (p || q) uni++;
+    if (p !== q) xor++;
+  }
+  return uni ? xor/uni : 0;
+}
+let worst = 1, worstPair = '', lines = [];
+for (let i=0;i<masks.length;i++) for (let j=i+1;j<masks.length;j++) {
+  const d = diff(masks[i].m, masks[j].m);
+  if (d < worst) { worst = d; worstPair = masks[i].name+'×'+masks[j].name; }
+  if (d < 0.45) lines.push('近すぎ '+masks[i].name+'×'+masks[j].name+' = '+d.toFixed(3));
+}
+const ok = worst >= 0.45;
+document.getElementById('out').textContent =
+  '最も似ているペア: '+worstPair+' 非一致率='+worst.toFixed(3)+'  (閾値0.45)\n'+
+  (lines.length? lines.join('\n') : '閾値を下回るペアなし')+'\n判定: '+(ok?'SILHOUETTE_OK':'SILHOUETTE_FAIL');
+document.title = ok ? 'SILHOUETTE_OK' : 'SILHOUETTE_FAIL';
+</script>

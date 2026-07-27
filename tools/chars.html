@@ -1,0 +1,43 @@
+<meta charset="utf-8">
+<body style="margin:0;background:#16120e">
+<canvas id="c" width="1500" height="1460"></canvas>
+<script src="data.js"></script>
+<script src="cur_gfx.js"></script>
+<script>
+const g = document.getElementById('c').getContext('2d');
+g.imageSmoothingEnabled = false;
+/* 上＝灯りの溜まりの中（戦闘が起きる明るさ）／下＝溜まりの外の闇 */
+g.fillStyle = '#6b5636'; g.fillRect(0,0,1500,740);
+g.fillStyle = '#171208'; g.fillRect(0,740,1500,720);
+
+function put(sp, x, y, sc) {
+  g.drawImage(sp.c, x - sp.ox*sc, y - sp.oy*sc, sp.w*sc, sp.h*sc);
+}
+function label(t, x, y, dark) {
+  g.fillStyle = dark ? '#e8dcc4' : '#241a0c';
+  g.font = '17px "Hiragino Mincho ProN",serif';
+  g.textAlign = 'center'; g.fillText(t, x, y); g.textAlign = 'left';
+}
+function band(t, y, dark) {
+  g.fillStyle = dark ? '#c8a55e' : '#3a2a12';
+  g.font = '15px "Hiragino Mincho ProN",serif';
+  g.fillText(t, 16, y);
+}
+
+const S = 2.6;
+band('武将 10 — 灯りの中', 26);
+HEROES.forEach((h,i) => {
+  const x = 150 + (i%5)*280, y = 330 + Math.floor(i/5)*330;
+  put(heroSprite(h, 0), x, y, S);
+  label(h.name + ' ' + h.weapon, x, y+30);
+});
+
+band('雑兵 8 — 闇の中（逆光の縁だけで見えるか）', 768, 1);
+const ek = ['zoku','hei','kyu','ju','ki','gou','sen','ko'];
+ek.forEach((k,i) => {
+  const x = 190 + (i%4)*360, y = 1050 + Math.floor(i/4)*300;
+  put(enemySprite(k, ENEMIES[k], 0), x, y, S);
+  label(ENEMIES[k].name, x, y+30, 1);
+});
+document.title = 'DONE';
+</script>

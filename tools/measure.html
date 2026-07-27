@@ -1,0 +1,33 @@
+<meta charset="utf-8">
+<body>
+<script src="data.js"></script>
+<script src="cur_gfx.js"></script>
+<script>
+const ZOOM = 1.62;
+function bbox(sp) {
+  const g = sp.c.getContext('2d');
+  const d = g.getImageData(0, 0, sp.c.width, sp.c.height).data;
+  let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+  for (let y = 0; y < sp.c.height; y++) for (let x = 0; x < sp.c.width; x++) {
+    if (d[(y * sp.c.width + x) * 4 + 3] > 8) {
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+  }
+  return { w: x1 - x0 + 1, h: y1 - y0 + 1 };
+}
+const out = [];
+HEROES.slice(0, 4).forEach(h => {
+  const b = bbox(heroSprite(h, 0));
+  out.push(`武将 ${h.name}: 実体 ${b.w}x${b.h}px → 画面上 ${Math.round(b.w*ZOOM)}x${Math.round(b.h*ZOOM)}px`);
+});
+['zoku','ju','ki','gou'].forEach(k => {
+  const b = bbox(enemySprite(k, ENEMIES[k], 0));
+  out.push(`雑兵 ${ENEMIES[k].name}: 実体 ${b.w}x${b.h}px → 画面上 ${Math.round(b.w*ZOOM)}x${Math.round(b.h*ZOOM)}px`);
+});
+const bb = bbox(bossSprite(STAGES[1].boss, 0));
+out.push(`大将 呂布: 実体 ${bb.w}x${bb.h}px → 画面上 ${Math.round(bb.w*ZOOM)}x${Math.round(bb.h*ZOOM)}px`);
+document.title = 'DONE';
+const p = document.createElement('pre'); p.id = 'r'; p.textContent = out.join('\n');
+(document.body||document.documentElement).appendChild(p);
+</script>

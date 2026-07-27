@@ -1053,25 +1053,6 @@ function clothTile(base, accent) {
   });
 }
 
-/* 火盆。戦場に置かれた光の器。三脚に鉢を載せただけの形で足りる */
-function brazierSprite() {
-  return carve('brazier1', 34, 44, 17, 40, {
-    ink: '#0d0a06', rim: 0.9,
-    shape: g => {
-      g.beginPath();
-      g.moveTo(-1.8, -12); g.lineTo(1.8, -12); g.lineTo(7.0, 0); g.lineTo(4.0, 0);
-      g.closePath(); g.fill();
-      g.beginPath();
-      g.moveTo(-1.8, -12); g.lineTo(1.8, -12); g.lineTo(-4.0, 0); g.lineTo(-7.0, 0);
-      g.closePath(); g.fill();
-      g.fillRect(-1.6, -15, 3.2, 3.4);
-      g.beginPath();
-      g.moveTo(-5.4, -15); g.lineTo(5.4, -15); g.lineTo(8.6, -21.5); g.lineTo(-8.6, -21.5);
-      g.closePath(); g.fill();
-    },
-  });
-}
-
 /* 被弾の白光。source-atop はオフスクリーンの中でだけ使う */
 function flashSprite(sp) {
   const f = bake('f_' + sp.key, sp.w, sp.h, g => {
