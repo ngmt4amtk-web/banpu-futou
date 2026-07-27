@@ -62,6 +62,11 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--sumi);
 .pad{padding:16px 4px;font-size:13px;line-height:1.9}
 
 /* ---- 武将 ---- */
+.hero-card{position:relative}
+/* 彫った人形を選択画面にも出す。誰を選ぶのかは名前でなく姿で決まる */
+.hc-fig{position:absolute;right:8px;top:6px;width:78px;height:74px;pointer-events:none;opacity:.94}
+.hero-card.locked .hc-fig{filter:grayscale(1) brightness(.35)}
+.hc-top,.hc-weapon,.hc-desc,.hc-trait{padding-right:80px}
 .hc-top{display:flex;align-items:baseline;justify-content:space-between}
 .hc-name{font-size:21px;color:var(--gin);letter-spacing:.1em}
 .hc-style{font-size:11px;letter-spacing:.1em}

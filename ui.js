@@ -53,6 +53,16 @@ function drawHeroSel() {
         bar('攻', h.base.atk / 34) + bar('速', h.base.aspd / 2.4) +
         bar('範', h.base.area / 1.5) + bar('体', h.base.hp / 200) +
         bar('走', (h.base.spd - 105) / 55) + '</div>' : '');
+    const fig = el('canvas', 'hc-fig');
+    const FW = 78, FH = 74, fs = Math.min(2, window.devicePixelRatio || 1);
+    fig.width = FW * fs; fig.height = FH * fs;
+    const fg = fig.getContext('2d');
+    fg.scale(fs, fs);
+    const sp = heroSprite(h, false);
+    /* 得物ごと収まるように、絵の実寸から倍率を出す */
+    const k = Math.min(FW / sp.w, FH / sp.h);
+    fg.drawImage(sp.c, (FW - sp.w * k) / 2, FH - sp.h * k, sp.w * k, sp.h * k);
+    c.appendChild(fig);
     if (owned) c.onclick = () => { selHero = h.id; drawHeroSel(); Snd.ui(); };
     box.appendChild(c);
   });
