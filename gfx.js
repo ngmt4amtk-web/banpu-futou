@@ -170,6 +170,13 @@ const Art = {
     return null;                                                  /* h_ 武将 */
   },
 
+  /* 胴の半幅（画面上の単位）。得物が横へ張り出すので画像幅では代用できない。
+     process.py が脚と腰の帯から実測した値を manifest に入れている */
+  bodyR(k) {
+    const m = this.man[k];
+    return (m && m.bw) ? m.bw : null;
+  },
+
   sprite(k) {
     const im = this.imgs[k];
     if (!im) return null;

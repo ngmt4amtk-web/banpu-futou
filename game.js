@@ -2,10 +2,11 @@
 'use strict';
 
 const SAVE_KEY = 'banpufutou.v1';
-const MAX_ENEMIES = 260;
+const MAX_ENEMIES = 420;   /* 画角を4倍に広げたので上限も引き上げる */
 const CELL = 72;
 const ZOOM = 0.78;       /* 引き。人より群れを見せる距離 */
-const SPAWN_MUL = 1.75;   /* 湧きの総量。画面を埋めるための係数 */
+const SPAWN_MUL = 2.25;   /* 湧きの総量。画角を広げると湧き半径も比例して遠くなり、
+                             到達が遅れて群れが薄まる。そのぶんを戻す係数 */
 
 /* ============ セーブ ============ */
 const DEFAULT_SAVE = () => ({
@@ -596,7 +597,8 @@ function update(dt) {
 
     /* 接触 */
     e.hitCd -= dt;
-    const rr = e.r + 13;
+    /* 接触は「見えている胴どうしが触れたら」。攻撃側の判定は広いままにしてある */
+    const rr = Math.max(11, bodyR(e) + playerBodyR());
     if (dist2(e.x, e.y, px, py) < rr * rr && e.hitCd <= 0 && R.invuln <= 0) {
       e.hitCd = 0.88; hurtPlayer(e.atk);
     }
@@ -938,6 +940,22 @@ function brazierField(camx, camy, VW, VH) {
   return out;
 }
 
+/* 描かれている胴の半幅を返す。接触ダメージと足元の影はこれで測る。
+   e.r（当たり半径）は「自分の攻撃が当たる範囲」としては広くて気持ちいいが、
+   「敵に触れて削られる範囲」に使うと絵より遥かに広く、理不尽になる。
+   歩兵は e.r+13 = 27 に対して実際の胴は 4.6 だった。 */
+function bodyR(e) {
+  if (e.__bw !== undefined) return e.__bw;
+  const k = e.boss ? ('b_' + e.def.key) : ('e_' + e.key);
+  const b = Art.bodyR(k);
+  e.__bw = (b !== null) ? b : e.r * 0.6;
+  return e.__bw;
+}
+function playerBodyR() {
+  const b = Art.bodyR('h_' + R.hero.id);
+  return (b !== null) ? b : 13;
+}
+
 function render() {
   const ctx = G.ctx, W = G.W, H = G.H;
   const VW = W / ZOOM, VH = H / ZOOM;
@@ -1249,7 +1267,7 @@ function shadow(ctx, sx, sy, w) {
 function drawPlayer(ctx, sx, sy) {
   const step = ((R.t * 7) | 0) % 2 === 0 && (G.input.dx || G.input.dy);
   const sp = heroSprite(R.hero, !!step);
-  shadow(ctx, sx, sy, 12);
+  shadow(ctx, sx, sy, playerBodyR() * 0.92);
   /* 引いた画角と群れの密度では、足元の輪だけでは自分を見失う。頭上に印を置く */
   ctx.fillStyle = 'rgba(255,228,150,' + (0.5 + 0.32 * Math.sin(R.t * 4)).toFixed(2) + ')';
   const my = sy - 46 + Math.sin(R.t * 4) * 1.6;
@@ -1302,7 +1320,7 @@ function drawOrbit(ctx, sx, sy, o) {
 
 function drawEnemy(ctx, sx, sy, e) {
   const sp = e.boss ? bossSprite(e.def, e.step) : enemySprite(e.key, e.def, e.step);
-  shadow(ctx, sx, sy, e.r * 0.72);
+  shadow(ctx, sx, sy, bodyR(e) * 0.92);
   ctx.save();
   ctx.translate(sx, sy);
   if (e.x > R.x) ctx.scale(-1, 1);

@@ -58,6 +58,23 @@ def trim(im, thresh=26):
     return im2, float(ax)
 
 
+def body_halfwidth(im):
+    """胴の半幅を測る。画像の幅をそのまま使うと、青龍偃月刀や槍が横へ張り出すぶん
+    「胴」を大きく見積もる。脚と腰のある下半分だけを見て、各行の不透明な広がりの
+    中央値を取る（最大値だと外套の裾を拾う）。"""
+    a = np.asarray(im)[..., 3]
+    h, w = a.shape
+    band = a[int(h * 0.55):int(h * 0.95)]
+    runs = []
+    for row in band:
+        xs = np.where(row > 90)[0]
+        if len(xs):
+            runs.append(xs.max() - xs.min() + 1)
+    if not runs:
+        return w * 0.5
+    return float(np.median(runs)) * 0.5
+
+
 def build(src, key, target_h):
     im, ax = trim(chroma_key(Image.open(src)))
     hi = target_h * SUPER
@@ -65,8 +82,10 @@ def build(src, key, target_h):
     sp = im.resize((max(1, round(im.width * k)), hi), Image.LANCZOS)
     sp.save(os.path.join(ART, key + '.png'), optimize=True)
     # manifest は「画面上の寸法」。PNG自体はその SUPER 倍で入っている
-    return {'w': max(1, round(im.width * (target_h / im.height))), 'h': target_h,
-            'ax': round(ax, 4), 'super': SUPER}
+    scale = target_h / im.height
+    return {'w': max(1, round(im.width * scale)), 'h': target_h,
+            'ax': round(ax, 4), 'super': SUPER,
+            'bw': round(body_halfwidth(im) * scale, 2)}
 
 
 def kind_of(key):
