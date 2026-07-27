@@ -967,7 +967,7 @@ function render() {
   const ox = VW / 2 - camx, oy = VH / 2 - camy * ISO;
 
   /* 地面 */
-  const tile = clothTile(R.stage.ground, R.stage.accent);
+  const tile = groundTile(R.stage);
   const tw = tile.w, th = tile.h * ISO;
   const startX = Math.floor((camx - VW / 2) / tw) * tw;
   const startY = Math.floor((camy * ISO - VH / 2) / th) * th;

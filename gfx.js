@@ -1095,6 +1095,18 @@ function shardSprite(kind, fac, s) {
 }
 
 /* ============ 背景 ============ */
+/* 戦場の地面。生成したテクスチャがあればそれを、無ければ元の布を織る。
+   引いた画角では地面が4倍映るので、単色＋織り目だとスケールの手がかりが消えて
+   人物だけが小さく浮く。石・草・轍のような足元大の粒が要る */
+function groundTile(stage) {
+  const im = Art.imgs['g_' + stage.id];
+  if (im) {
+    const S = 256;
+    return bake('gt_' + stage.id, S, S, g => g.drawImage(im, 0, 0, S, S));
+  }
+  return clothTile(stage.ground, stage.accent);
+}
+
 /* 影絵の布。麻目が透け、灯りが後ろから当たる */
 function clothTile(base, accent) {
   const ck = 'cloth_' + base + '_' + accent;

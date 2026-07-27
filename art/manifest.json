@@ -90,6 +90,31 @@
   "super": 3,
   "w": 18
  },
+ "g_changban": {
+  "h": 256,
+  "kind": "ground",
+  "w": 256
+ },
+ "g_chibi": {
+  "h": 256,
+  "kind": "ground",
+  "w": 256
+ },
+ "g_guangzong": {
+  "h": 256,
+  "kind": "ground",
+  "w": 256
+ },
+ "g_hulao": {
+  "h": 256,
+  "kind": "ground",
+  "w": 256
+ },
+ "g_wuzhangyuan": {
+  "h": 256,
+  "kind": "ground",
+  "w": 256
+ },
  "h_ganning": {
   "ax": 0.6446,
   "bw": 9.96,
