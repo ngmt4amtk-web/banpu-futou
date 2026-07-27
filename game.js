@@ -252,6 +252,11 @@ function hurtEnemy(e, dmg, crit, kx, ky) {
   }
   if (kx || ky) { const m = e.boss ? 0.12 : (e.def.body === 'big' ? 0.45 : 1); e.kx += kx * m; e.ky += ky * m; }
   pushNum(e.x, e.y - e.r, Math.round(d), crit);
+  /* 当たった位置で弾ける火花。毎回出すと高レベルで数百個になるので総数で抑える */
+  if (R.fx.length < 46) {
+    R.fx.push({ kind: 'spark', x: e.x, y: e.y - bodyR(e) * 0.8, t: 0, dur: 0.22,
+                s: crit ? 1.8 : 1.0, a: rnd(TAU) });
+  }
   if (crit) Snd.crit(); else Snd.hit();
   splash(e.x, e.y, crit ? 6 : 3, crit ? '#f0d67a' : '#c0392b');
   if (e.hp <= 0) killEnemy(e);
@@ -1010,6 +1015,17 @@ function render() {
     ctx.beginPath(); ctx.ellipse(sx, sy, f.r * (1 - k * 0.15), f.r * 0.55 * (1 - k * 0.15), 0, 0, TAU); ctx.stroke();
     if (f.done) {
       const a = Math.max(0, 1 - (f.t - f.dur * 0.72) / (f.dur * 0.28));
+      const im = Art.imgs['fx_burst'];
+      if (im) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = a;
+        ctx.translate(sx, sy); ctx.scale(1, 0.55);
+        const d = f.r * 2.5 * (1.35 - 0.35 * a);      /* 外へ開きながら消える */
+        ctx.drawImage(im, -d / 2, -d / 2, d, d);
+        ctx.restore();
+        return;
+      }
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.translate(sx, sy); ctx.scale(1, 0.55);
@@ -1080,6 +1096,22 @@ function render() {
     const k = f.t / f.dur;
     if (f.kind === 'arc') {
       const sx = f.x + ox, sy = f.y * ISO + oy;
+      /* 生成した斬撃を加算で置く。黒背景は加算では寄与ゼロなので透明として振る舞う。
+         一回転（arc≈2π）は弧でつながらないので環の素材へ切り替える */
+      const full = f.arc > 5.0;
+      const im = Art.imgs[full ? 'fx_ring' : 'fx_slash'];
+      if (im) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(1, (1 - k) * 1.45);
+        ctx.translate(sx, sy); ctx.scale(1, ISO);
+        /* 素材は凸側が左を向いている。振り抜く先へ凸を出すため半回転足す */
+        ctx.rotate((f.spin ? f.a + k * TAU : f.a) + Math.PI);
+        const d = f.r * (full ? 2.15 : 2.4);
+        ctx.drawImage(im, -d / 2, -d / 2, d, d);
+        ctx.restore();
+        return;
+      }
       ctx.save(); ctx.translate(sx, sy); ctx.scale(1, ISO);
       const a0 = f.spin ? f.a + k * TAU - 0.7 : f.a - f.arc / 2;
       const a1 = f.spin ? f.a + k * TAU + 0.7 : f.a - f.arc / 2 + f.arc * Math.min(1, k * 1.6);
@@ -1094,6 +1126,18 @@ function render() {
       ctx.restore();
     } else if (f.kind === 'thrust') {
       const sx = f.x + ox, sy = f.y * ISO + oy;
+      const im = Art.imgs['fx_thrust'];
+      if (im) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(1, (1 - k) * 1.5);
+        ctx.translate(sx, sy); ctx.scale(1, ISO); ctx.rotate(f.a);
+        /* 素材は左から右へ走り、切っ先が右端。柄側を自機に置いて伸ばす */
+        const L = f.len * (0.6 + 0.4 * Math.min(1, k * 2.4)), H = f.w * 2.6;
+        ctx.drawImage(im, -L * 0.06, -H / 2, L * 1.06, H);
+        ctx.restore();
+        return;
+      }
       ctx.save(); ctx.translate(sx, sy); ctx.scale(1, ISO); ctx.rotate(f.a);
       const g2 = ctx.createLinearGradient(0, 0, f.len, 0);
       g2.addColorStop(0, 'rgba(255,250,230,' + (0.7 * (1 - k)) + ')');
@@ -1104,8 +1148,33 @@ function render() {
       ctx.lineTo(f.len, f.w / 6); ctx.lineTo(0, f.w / 2 * (1 - k * 0.4));
       ctx.closePath(); ctx.fill();
       ctx.restore();
+    } else if (f.kind === 'spark') {
+      const im = Art.imgs['fx_impact'];
+      if (!im) return;
+      const sx = f.x + ox, sy = f.y * ISO + oy;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(1, (1 - k) * 1.7);
+      ctx.translate(sx, sy); ctx.rotate(f.a);
+      const d = (15 + 22 * k) * f.s;                  /* 弾けながら広がる */
+      ctx.drawImage(im, -d / 2, -d / 2, d, d);
+      ctx.restore();
     } else if (f.kind === 'bolt') {
       const sx = f.x + ox, sy = f.y * ISO + oy;
+      const im = Art.imgs['fx_bolt'];
+      if (im) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(1, (1 - k) * 2.0);
+        const H = 190, W = H * 0.52;                  /* 素材は上端から下端へ落ちる */
+        ctx.drawImage(im, sx - W / 2, sy - H, W, H);
+        ctx.globalAlpha = Math.min(1, (1 - k) * 1.4); /* 着弾点の飛沫 */
+        const d = f.r * 2.2;
+        ctx.translate(sx, sy); ctx.scale(1, ISO);
+        ctx.drawImage(Art.imgs['fx_impact'] || im, -d / 2, -d / 2, d, d);
+        ctx.restore();
+        return;
+      }
       ctx.strokeStyle = 'rgba(190,232,248,' + (1 - k) + ')'; ctx.lineWidth = 3;
       ctx.beginPath();
       let yy = sy - 260, xx = sx + rnd(-10, 10);
@@ -1152,6 +1221,18 @@ function render() {
   R.projs.forEach(p => {
     if (p.kind === 'trap') return;
     const sx = p.x + ox, sy = p.y * ISO + oy;
+    const im = Art.imgs[p.homing ? 'fx_wind' : 'fx_dart'];
+    if (im) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.82;                          /* 加算の白飛びを抑える */
+      ctx.translate(sx, sy);
+      ctx.rotate(Math.atan2(p.vy, p.vx));
+      const L = (p.r + 6) * 2.0, H = L * 0.5;
+      ctx.drawImage(im, -L * 0.58, -H / 2, L, H);     /* 素材は右向き。穂先を進行方向へ */
+      ctx.restore();
+      return;
+    }
     ctx.save();
     ctx.translate(sx, sy);
     ctx.rotate(Math.atan2(p.vy, p.vx));

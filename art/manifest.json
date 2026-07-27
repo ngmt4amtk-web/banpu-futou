@@ -90,6 +90,46 @@
   "super": 3,
   "w": 18
  },
+ "fx_bolt": {
+  "h": 256,
+  "kind": "fx",
+  "w": 256
+ },
+ "fx_burst": {
+  "h": 256,
+  "kind": "fx",
+  "w": 256
+ },
+ "fx_dart": {
+  "h": 256,
+  "kind": "fx",
+  "w": 256
+ },
+ "fx_impact": {
+  "h": 256,
+  "kind": "fx",
+  "w": 256
+ },
+ "fx_ring": {
+  "h": 256,
+  "kind": "fx",
+  "w": 256
+ },
+ "fx_slash": {
+  "h": 256,
+  "kind": "fx",
+  "w": 256
+ },
+ "fx_thrust": {
+  "h": 256,
+  "kind": "fx",
+  "w": 256
+ },
+ "fx_wind": {
+  "h": 256,
+  "kind": "fx",
+  "w": 256
+ },
  "g_changban": {
   "h": 256,
   "kind": "ground",
