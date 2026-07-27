@@ -20,7 +20,7 @@ RAW = os.path.join(ART, 'raw')
 
 # 実機での縦サイズ。ZOOM=0.78 を掛けた値が画面上の実寸になる。
 # 武将52 -> 画面上41px。カメラを引いて群れを見せる距離に合わせた
-SIZES = {'h': 52, 'e': 30, 'eb': 38, 'ee': 42, 'ek': 37, 'b': 99}
+SIZES = {'h': 52, 'e': 30, 'eb': 38, 'ee': 42, 'ek': 37, 'b': 99, 'i': 48}
 
 # 実寸の3倍で書き出す。ZOOMや高dpiで拡大されても輪郭が保つように
 SUPER = 3
@@ -70,6 +70,8 @@ def build(src, key, target_h):
 
 
 def kind_of(key):
+    if key.startswith('i_') or key.startswith('s_'):
+        return 'i'
     if key.startswith('b_'):
         return 'b'
     if key.startswith('h_'):

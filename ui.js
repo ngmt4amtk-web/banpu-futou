@@ -36,6 +36,16 @@ function drawTitle() {
   $('t-legends').textContent = legs + ' / ' + LEGENDS.length;
 }
 
+/* 生成した絵があれば絵、無ければ従来の漢字。
+   manifest の読込完了を待って判定すると、まだ読めていない時に全部漢字に落ちる。
+   そこで画像は無条件に出し、404 だったときだけ漢字へ差し戻す＝読込順に依存しない */
+function icoHTML(key, fallback) {
+  return '<img class="ico" src="art/' + key + '.png" alt="" data-fb="' + fallback + '" onerror="icoFail(this)">';
+}
+window.icoFail = function (img) {
+  img.replaceWith(document.createTextNode(img.getAttribute('data-fb') || ''));
+};
+
 /* ============ 武将選択 ============ */
 function drawHeroSel() {
   const box = $('hero-list'); box.innerHTML = '';
@@ -138,7 +148,8 @@ function drawVault() {
   const tabs = $('vault-tabs'); tabs.innerHTML = '';
   SLOTS.forEach(s => {
     const n = SAVE.vault.filter(i => i.slot === s.id).length;
-    const t = el('div', 'vtab' + (vaultSlot === s.id ? ' on' : ''), s.name + '<i>' + n + '</i>');
+    const t = el('div', 'vtab' + (vaultSlot === s.id ? ' on' : ''),
+      icoHTML('s_' + s.id, '') + s.name + '<i>' + n + '</i>');
     t.onclick = () => { vaultSlot = s.id; drawVault(); Snd.ui(); };
     tabs.appendChild(t);
   });
@@ -183,7 +194,7 @@ function showLevelUp() {
     const s = c.s;
     const card = el('div', 'card lu-card' + (s.kind === 'sub' ? ' sub' : ''));
     card.innerHTML =
-      '<div class="lu-icon">' + s.icon + '</div>' +
+      '<div class="lu-icon">' + icoHTML('i_' + s.id, s.icon) + '</div>' +
       '<div class="lu-body">' +
       '<div class="lu-name">' + s.name + (c.lv ? ' <i>' + (c.lv + 1) + '</i>' : ' <i class="new">新</i>') + '</div>' +
       '<div class="lu-desc">' + (typeof s.desc === 'function' ? s.desc(c.lv + 1) : s.desc) + '</div>' +
