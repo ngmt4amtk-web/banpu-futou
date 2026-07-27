@@ -4,7 +4,7 @@
 const SAVE_KEY = 'banpufutou.v1';
 const MAX_ENEMIES = 260;
 const CELL = 72;
-const ZOOM = 1.62;       /* 寄り。人と群れが見える距離 */
+const ZOOM = 0.78;       /* 引き。人より群れを見せる距離 */
 const SPAWN_MUL = 1.75;   /* 湧きの総量。画面を埋めるための係数 */
 
 /* ============ セーブ ============ */
@@ -921,7 +921,7 @@ function checkUnlocks() {
 /* 置いた光の位置。無限に続く戦場でも同じ場所に同じ火盆が立つように、格子をハッシュで散らす */
 function brazierField(camx, camy, VW, VH) {
   /* 縦は画面座標でなく世界座標で数える。ISOで潰れているぶん世界は縦に広い */
-  const CELL = 250, out = [], WH = VH / ISO;
+  const CELL = 360, out = [], WH = VH / ISO;
   const x0 = Math.floor((camx - VW * 0.8) / CELL), x1 = Math.floor((camx + VW * 0.8) / CELL);
   const y0 = Math.floor((camy - WH * 0.75) / CELL), y1 = Math.floor((camy + WH * 0.75) / CELL);
   for (let gx = x0; gx <= x1; gx++) for (let gy = y0; gy <= y1; gy++) {
@@ -1019,17 +1019,17 @@ function render() {
     const bob = Math.sin(p.t * 5) * 2;
     if (p.kind === 'xp') {
       ctx.fillStyle = '#7fd8e8';
-      ctx.shadowColor = '#7fd8e8'; ctx.shadowBlur = 8;
-      ctx.beginPath(); ctx.moveTo(sx, sy - 6 + bob); ctx.lineTo(sx + 4, sy + bob);
-      ctx.lineTo(sx, sy + 6 + bob); ctx.lineTo(sx - 4, sy + bob); ctx.closePath(); ctx.fill();
+      ctx.shadowColor = '#7fd8e8'; ctx.shadowBlur = 5;
+      ctx.beginPath(); ctx.moveTo(sx, sy - 3.4 + bob); ctx.lineTo(sx + 2.3, sy + bob);
+      ctx.lineTo(sx, sy + 3.4 + bob); ctx.lineTo(sx - 2.3, sy + bob); ctx.closePath(); ctx.fill();
       ctx.shadowBlur = 0;
     } else if (p.kind === 'gold') {
-      ctx.fillStyle = '#e0b93f'; ctx.shadowColor = '#e0b93f'; ctx.shadowBlur = 8;
-      ctx.beginPath(); ctx.ellipse(sx, sy + bob, 5, 3.4, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#e0b93f'; ctx.shadowColor = '#e0b93f'; ctx.shadowBlur = 5;
+      ctx.beginPath(); ctx.ellipse(sx, sy + bob, 2.9, 2.0, 0, 0, TAU); ctx.fill();
       ctx.shadowBlur = 0;
     } else if (p.kind === 'heal') {
-      ctx.fillStyle = '#5ad88a'; ctx.shadowColor = '#5ad88a'; ctx.shadowBlur = 10;
-      ctx.fillRect(sx - 2, sy - 7 + bob, 4, 14); ctx.fillRect(sx - 7, sy - 2 + bob, 14, 4);
+      ctx.fillStyle = '#5ad88a'; ctx.shadowColor = '#5ad88a'; ctx.shadowBlur = 6;
+      ctx.fillRect(sx - 1.2, sy - 4 + bob, 2.4, 8); ctx.fillRect(sx - 4, sy - 1.2 + bob, 8, 2.4);
       ctx.shadowBlur = 0;
     } else if (p.kind === 'loot') {
       const rc = RARITY[p.item.rar];
@@ -1171,7 +1171,7 @@ function render() {
   R.nums.forEach(n => {
     const k = 1 - n.t / 0.62;
     ctx.globalAlpha = k;
-    ctx.font = (n.crit ? 'bold 22px ' : '15px ') + FONT;
+    ctx.font = (n.crit ? 'bold 27px ' : '18px ') + FONT;
     ctx.fillStyle = n.crit ? '#f0d67a' : '#f2ece0';
     ctx.strokeStyle = 'rgba(10,9,8,0.9)'; ctx.lineWidth = 3;
     const s = String(n.v);
@@ -1196,7 +1196,7 @@ function render() {
      だから暖色が「染み」に見えた。光を溜まりに変えると、暗い寒色の中の暖色が成立する。
      溜まりの外は塗らない。そこの敵は逆光の縁だけで見える。 */
   const lx = R.x + ox, ly = R.y * ISO + oy - 16;
-  const lr = Math.max(VW, VH) * 1.25;
+  const lr = Math.min(VW, VH) * 0.95;
 
   ctx.globalCompositeOperation = 'lighter';
   const pool = (px, py, pr, a, warm) => {
@@ -1210,23 +1210,23 @@ function render() {
     ctx.fillStyle = gr;
     ctx.fillRect(px - pr, py - pr, pr * 2, pr * 2);
   };
-  pool(lx, ly, lr, 0.13, '255,138,48');
+  pool(lx, ly, lr, 0.17, '255,138,48');
   R.braziers.forEach(b => {
     const bx = b.x + ox, by = b.y * ISO + oy;
     const fl = 0.84 + 0.16 * Math.sin(R.t * 5.5 + b.seed);
-    pool(bx, by - 15, 128 * fl, 0.30, '255,132,40');
-    pool(bx, by - 17, 44 * fl, 0.34, '255,222,150');
+    pool(bx, by - 8, 96 * fl, 0.30, '255,132,40');
+    pool(bx, by - 9, 30 * fl, 0.36, '255,222,150');
     ctx.fillStyle = 'rgba(255,206,120,' + (0.55 * fl).toFixed(3) + ')';   /* 炎そのもの */
     ctx.beginPath();
-    ctx.moveTo(bx - 4.6 * fl, by - 19);
-    ctx.quadraticCurveTo(bx - 2 * fl, by - 27 * fl, bx + 0.6, by - 31 * fl);
-    ctx.quadraticCurveTo(bx + 3.4 * fl, by - 26 * fl, bx + 4.8 * fl, by - 19);
+    ctx.moveTo(bx - 2.4 * fl, by - 10);
+    ctx.quadraticCurveTo(bx - 1 * fl, by - 14 * fl, bx + 0.3, by - 16 * fl);
+    ctx.quadraticCurveTo(bx + 1.8 * fl, by - 13.5 * fl, bx + 2.5 * fl, by - 10);
     ctx.closePath(); ctx.fill();
   });
   ctx.globalCompositeOperation = 'source-over';
 
   /* 遠景は沈める。余白は暗さで作る */
-  const vr = Math.max(VW, VH) * 0.95;
+  const vr = Math.max(VW, VH) * 0.66;
   const vig = ctx.createRadialGradient(lx, ly, vr * 0.16, lx, ly, vr);
   vig.addColorStop(0,    'rgba(3,4,8,0)');
   vig.addColorStop(0.34, 'rgba(3,4,8,0.14)');
@@ -1250,8 +1250,17 @@ function drawPlayer(ctx, sx, sy) {
   const step = ((R.t * 7) | 0) % 2 === 0 && (G.input.dx || G.input.dy);
   const sp = heroSprite(R.hero, !!step);
   shadow(ctx, sx, sy, 12);
-  ctx.strokeStyle = 'rgba(240,214,122,0.3)'; ctx.lineWidth = 1.1;
-  ctx.beginPath(); ctx.ellipse(sx, sy, 16, 6, 0, 0, TAU); ctx.stroke();
+  /* 引いた画角と群れの密度では、足元の輪だけでは自分を見失う。頭上に印を置く */
+  ctx.fillStyle = 'rgba(255,228,150,' + (0.5 + 0.32 * Math.sin(R.t * 4)).toFixed(2) + ')';
+  const my = sy - 46 + Math.sin(R.t * 4) * 1.6;
+  ctx.beginPath();
+  ctx.moveTo(sx, my + 5); ctx.lineTo(sx - 3.4, my); ctx.lineTo(sx + 3.4, my);
+  ctx.closePath(); ctx.fill();
+  const pr = 0.62 + 0.16 * Math.sin(R.t * 3.4);           /* 群れの中で自分を見失わないための脈 */
+  ctx.strokeStyle = 'rgba(255,226,140,' + pr.toFixed(2) + ')'; ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.ellipse(sx, sy, 13, 5, 0, 0, TAU); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,226,140,' + (pr * 0.3).toFixed(2) + ')'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.ellipse(sx, sy, 19, 7.4, 0, 0, TAU); ctx.stroke();
   const flip = Math.cos(R.face) < 0;
   ctx.save();
   if (R.invuln > 0) ctx.globalAlpha = 0.45 + 0.4 * Math.sin(R.t * 40);

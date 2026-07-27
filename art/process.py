@@ -18,8 +18,12 @@ from PIL import Image
 ART = os.path.dirname(os.path.abspath(__file__))
 RAW = os.path.join(ART, 'raw')
 
-# 実機での縦サイズ。武将は124px（彫っていた97pxより大きく、絵の情報量に見合わせる）
-SIZES = {'h': 124, 'e': 72, 'eb': 92, 'ee': 100, 'ek': 88, 'b': 236}
+# 実機での縦サイズ。ZOOM=0.78 を掛けた値が画面上の実寸になる。
+# 武将52 -> 画面上41px。カメラを引いて群れを見せる距離に合わせた
+SIZES = {'h': 52, 'e': 30, 'eb': 38, 'ee': 42, 'ek': 37, 'b': 99}
+
+# 実寸の3倍で書き出す。ZOOMや高dpiで拡大されても輪郭が保つように
+SUPER = 3
 
 
 def bg_color(a):
@@ -56,12 +60,13 @@ def trim(im, thresh=26):
 
 def build(src, key, target_h):
     im, ax = trim(chroma_key(Image.open(src)))
-    k = target_h / im.height
-    w = max(1, round(im.width * k))
-    sp = im.resize((w, target_h), Image.LANCZOS)
-    out = os.path.join(ART, key + '.png')
-    sp.save(out, optimize=True)
-    return {'w': w, 'h': target_h, 'ax': round(ax, 4)}
+    hi = target_h * SUPER
+    k = hi / im.height
+    sp = im.resize((max(1, round(im.width * k)), hi), Image.LANCZOS)
+    sp.save(os.path.join(ART, key + '.png'), optimize=True)
+    # manifest は「画面上の寸法」。PNG自体はその SUPER 倍で入っている
+    return {'w': max(1, round(im.width * (target_h / im.height))), 'h': target_h,
+            'ax': round(ax, 4), 'super': SUPER}
 
 
 def kind_of(key):
