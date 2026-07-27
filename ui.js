@@ -54,7 +54,7 @@ function drawHeroSel() {
         bar('範', h.base.area / 1.5) + bar('体', h.base.hp / 200) +
         bar('走', (h.base.spd - 105) / 55) + '</div>' : '');
     const fig = el('canvas', 'hc-fig');
-    const FW = 78, FH = 74, fs = Math.min(2, window.devicePixelRatio || 1);
+    const FW = 96, FH = 88, fs = Math.min(2, window.devicePixelRatio || 1);
     fig.width = FW * fs; fig.height = FH * fs;
     const fg = fig.getContext('2d');
     fg.scale(fs, fs);
@@ -316,7 +316,13 @@ function boot() {
   $('r-vault').onclick = () => go('vault');
 
   go('title');
-  requestAnimationFrame(frame);
+
+  /* 生成した絵を先に読む。届かなくても Art.load は必ず done を呼ぶので起動は止まらない */
+  Art.load(() => {
+    Sprites.cache = {};                       /* 彫った絵で焼いたものを捨てて差し替える */
+    if (G.mode === 'hero') drawHeroSel();        /* 読込前に開かれていた選択画面を描き直す */
+    requestAnimationFrame(frame);
+  });
 
   /* ヘッドレス自己検証: ?selftest=秒数[&hero=..&stage=..][&all=1] */
   const q = new URLSearchParams(location.search);

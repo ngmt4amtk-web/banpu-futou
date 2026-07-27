@@ -131,6 +131,61 @@ function bake(key, w, h, fn) {
   return Sprites.cache[key];
 }
 
+/* ============ 生成した絵 ============
+   彫った人形は土台であって完成品ではない。manifest に載っている分だけ絵へ差し替わり、
+   載っていない分は彫った絵のまま出る。1枚欠けても画面が壊れないのが要件——
+   絵が全部揃うまで遊べない、という状態を作らない。
+*/
+const Art = {
+  base: 'art/', man: {}, imgs: {}, loaded: false,
+
+  load(done) {
+    const fin = () => { this.loaded = true; done(); };
+    let to = setTimeout(fin, 6000);            /* 取得が詰まっても起動は止めない */
+    fetch(this.base + 'manifest.json', { cache: 'no-cache' })
+      .then(r => r.ok ? r.json() : {})
+      .catch(() => ({}))
+      .then(man => {
+        this.man = man || {};
+        const keys = Object.keys(this.man);
+        if (!keys.length) { clearTimeout(to); return fin(); }
+        let left = keys.length;
+        const tick = () => { if (--left <= 0) { clearTimeout(to); fin(); } };
+        keys.forEach(k => {
+          const im = new Image();
+          im.onload = () => { this.imgs[k] = im; tick(); };
+          im.onerror = tick;                   /* 欠けた分は彫った絵に落ちる */
+          im.src = this.base + k + '.png';
+        });
+      });
+  },
+
+  /* 絵があれば焼いて返す。無ければ null を返して呼び側を彫りへ落とす。
+     生成物は一様なスタジオ光で描かれている——そのまま置くと夜の戦場で敵が主役より明るくなり、
+     せっかくの単一光源が消える。だから焼く時に階層を戻す:
+     武将は素のまま、雑兵は夜へ沈め、大将はその中間。 */
+  shade(k) {
+    if (k.charCodeAt(0) === 101) return 'rgba(16,22,40,0.46)';   /* e_ 雑兵 */
+    if (k.charCodeAt(0) === 98) return 'rgba(16,20,36,0.20)';    /* b_ 大将 */
+    return null;                                                  /* h_ 武将 */
+  },
+
+  sprite(k) {
+    const im = this.imgs[k];
+    if (!im) return null;
+    const m = this.man[k];
+    const sh = this.shade(k);
+    const sp = bake('art_' + k, m.w, m.h, g => {
+      g.drawImage(im, 0, 0, m.w, m.h);
+      if (sh) { g.globalCompositeOperation = 'source-atop'; g.fillStyle = sh; g.fillRect(0, 0, m.w, m.h); }
+    });
+    sp.ox = Math.round(m.w * m.ax);            /* 接地点。bbox中心だと得物の張り出しで本人がずれる */
+    sp.oy = m.h;
+    sp.top = -m.h;
+    return sp;
+  },
+};
+
 /* ============ 逆光で焼く ============
    影絵は「塗り」ではなく「抜き」で見える。だから工程は必ずこの順:
      1. 光の層   — 輪郭をひと回り大きく、灯りの色で敷く
@@ -889,6 +944,8 @@ const HERO_CARVE = {
 const H_S = 1.62, H_W = 118, H_H = 108, H_OX = 50, H_OY = 101;
 
 function heroSprite(hero, step) {
+  const a = Art.sprite('h_' + hero.id);
+  if (a) return a;
   const C = HERO_CARVE[hero.id] || HERO_CARVE.zhaoyun;
   const P = HERO_PAINT[hero.id] || HERO_PAINT.zhaoyun;
   const B = BUILD[C.build];
@@ -935,6 +992,8 @@ function pQuiver(g, s, B) {
 }
 
 function enemySprite(key, def, step) {
+  const a = Art.sprite('e_' + key);
+  if (a) return a;
   const fac = def.fac || 'gun';
   const ink = INK[fac] || INK.gun;
   const ck = 'ec_' + key + '_' + (step ? 1 : 0);
@@ -989,6 +1048,8 @@ const BOSS_CARVE = {
 const B_S = 2.75, B_W = 200, B_H = 186, B_OX = 84, B_OY = 174;
 
 function bossSprite(boss, step) {
+  const a = Art.sprite('b_' + boss.key);
+  if (a) return a;
   const C = BOSS_CARVE[boss.key] || BOSS_CARVE.lubu;
   const B = BUILD[C.build];
   return carve('bc_' + boss.key + '_' + (step ? 1 : 0), B_W, B_H, B_OX, B_OY, {
